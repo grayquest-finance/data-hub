@@ -1,236 +1,258 @@
-properties([
-    parameters([
-        string(
-            name: 'BRANCH_NAME',
-            defaultValue: 'release_uat',
-            description: 'The release branch to deploy (e.g., release_uat, release_staging, release_prod)'
-        ),
-        string(
-            name: 'COMMIT_ID',
-            defaultValue: '',
-            description: 'Specific commit ID to deploy (optional)'
-        ),
-        string(
-            name: 'TRIGGERED_BY',
-            defaultValue: 'manual',
-            description: 'Who/what triggered this deployment'
-        ),
-        choice(
-            name: 'DEPLOYMENT_MODE',
-            choices: ['standard', 'force', 'rollback'],
-            description: 'Deployment mode: standard (normal), force (skip validations), rollback (revert to previous)'
-        ),
-    ]),
-    disableConcurrentBuilds(),
-    buildDiscarder(logRotator(numToKeepStr: '30'))
-])
-
-def extractEnvironment(branchName) {
-    def lower = branchName.toLowerCase()
-    if (lower.contains('uat'))     return 'uat'
-    if (lower.contains('staging')) return 'staging'
-    if (lower.contains('preprod')) return 'preprod'
-    return 'uat'
-}
-
-def getClusterName(environment) {
-    switch(environment) {
-        case 'uat':     return 'sandbox-tools'
-        case 'staging': return 'sandbox-tools'
-        case 'preprod': return 'pre-prod-cluster'
-        case 'prod':    return 'production-cluster'
-        default:        return 'sandbox-tools'
-    }
-}
-
 pipeline {
-    agent { label 'gq_arm_' }
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  serviceAccountName: jenkins-service-account
+  containers:
+  - name: jenkins-agent
+    image: ${params.JENKINS_AGENT_IMAGE}
+    tty: true
+    command: ["cat"]
+    volumeMounts:
+    - mountPath: /home/jenkins/agent
+      name: workspace-volume
+    env:
+    - name: AWS_DEFAULT_REGION
+      value: "ap-south-1"
+  - name: aws-cli
+    image: amazon/aws-cli:2.15.17
+    tty: true
+    command: ["cat"]
+    volumeMounts:
+    - mountPath: /home/jenkins/agent
+      name: workspace-volume
+    env:
+    - name: AWS_DEFAULT_REGION
+      value: "ap-south-1"
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:debug
+    tty: true
+    command: ["/busybox/cat"]
+    volumeMounts:
+    - mountPath: /home/jenkins/agent
+      name: workspace-volume
+    env:
+    - name: AWS_DEFAULT_REGION
+      value: "ap-south-1"
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "2Gi"
+        ephemeral-storage: "4Gi"
+      limits:
+        cpu: "1"
+        memory: "4Gi"
+        ephemeral-storage: "4Gi"
 
-    environment {
-        AWS_DEFAULT_REGION   = 'ap-south-1'
-        ECR_REGISTRY         = '579897422692.dkr.ecr.ap-south-1.amazonaws.com'
-
-        TARGET_ENVIRONMENT   = extractEnvironment(params.BRANCH_NAME)
-        ECR_REPOSITORY_NAME  = "data_hub_${TARGET_ENVIRONMENT}"
-        EKS_CLUSTER_NAME     = getClusterName(TARGET_ENVIRONMENT)
-        K8S_NAMESPACE        = "data-hub-${TARGET_ENVIRONMENT}"
-        K8S_DEPLOYMENT       = 'data-hub'
-
-        APP_NAME             = 'data-hub'
-        TARGET_BRANCH        = "${params.BRANCH_NAME}"
-        COMMIT_ID            = "${params.COMMIT_ID ?: env.GIT_COMMIT?.take(8) ?: 'latest'}"
-        IMAGE_TAG            = "${TARGET_BRANCH}-${COMMIT_ID}"
-        FULL_IMAGE_URI       = "${ECR_REGISTRY}/${ECR_REPOSITORY_NAME}:${IMAGE_TAG}"
-
-        DEPLOYMENT_MODE      = "${params.DEPLOYMENT_MODE}"
-        TRIGGERED_BY         = "${params.TRIGGERED_BY}"
-        MAX_RELEASES_TO_KEEP = '20'
+  - name: helm-deploy
+    image: dtzar/helm-kubectl:3.12.3
+    tty: true
+    command: ["sleep", "3600"]
+    volumeMounts:
+    - mountPath: /home/jenkins/agent
+      name: workspace-volume
+    env:
+    - name: AWS_DEFAULT_REGION
+      value: "ap-south-1"
+  volumes:
+  - name: workspace-volume
+    emptyDir: {}
+            """
+        }
     }
-
+    environment {
+        AWS_ACCOUNT_ID    = "${params.AWS_ACCOUNT_ID}"
+        AWS_REGION        = "${params.AWS_REGION}"
+        ECR_REPO          = "${params.ECR_REPO}"
+        APP_NAME          = "${params.APP_NAME}"
+        SONARQUBE_ENV     = "SonarQube"
+        APP_RELEASE       = "${params.APP_RELEASE}"
+        RUN_SONAR         = "${params.RUN_SONAR}"
+        EKS_CLUSTER_NAME  = "${params.EKS_CLUSTER_NAME}"
+        NAMESPACE         = "${params.NAMESPACE}"
+    }
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
     stages {
-        stage('Initialize') {
+        stage('Print Parameters') {
             steps {
-                script {
-                    echo "🚀 STARTING DATA HUB DEPLOYMENT"
-                    echo "═══════════════════════════════════════"
-                    echo "📦 Application:  ${APP_NAME}"
-                    echo "🌿 Branch:       ${TARGET_BRANCH}"
-                    echo "📝 Commit:       ${COMMIT_ID}"
-                    echo "🏷️  Image Tag:   ${IMAGE_TAG}"
-                    echo "⚙️  Mode:         ${DEPLOYMENT_MODE}"
-                    echo "👤 Triggered by: ${TRIGGERED_BY}"
-                    echo "☸️  EKS Cluster: ${EKS_CLUSTER_NAME}"
-                    echo "📁 Namespace:    ${K8S_NAMESPACE}"
-                    echo "═══════════════════════════════════════"
+                container('jenkins-agent') {
+                    sh '''
+                        echo "===== BUILD PARAMETERS ====="
+                        echo "AWS_REGION        = ${AWS_REGION}"
+                        echo "EKS_CLUSTER_NAME  = ${EKS_CLUSTER_NAME}"
+                        echo "NAMESPACE         = ${NAMESPACE}"
+                        echo "ECR_REPO          = ${ECR_REPO}"
+                        echo "APP_NAME          = ${APP_NAME}"
+                        echo "GIT_BRANCH        = ${GIT_BRANCH}"
+                        echo "============================"
+                    '''
+                }
+            }
+        }
+        stage('Clone Code') {
+            steps {
+                container('jenkins-agent') {
+                    git branch: "${params.GIT_BRANCH}",
+                        url: 'https://github.com/shravan-amberkar-gq/data-hub.git',
+                        credentialsId: 'test-cred-git'
+
+                    sh '''
+                        echo "Repository cloned successfully"
+                        ls -la
+                        head -n 20 Dockerfile
+                    '''
                 }
             }
         }
 
-        stage('Checkout') {
+        stage('Set Image Tag') {
             steps {
-                script {
-                    checkout([
-                        $class: 'GitSCM',
-                        branches: [[name: "origin/${TARGET_BRANCH}"]],
-                        doGenerateSubmoduleConfigurations: false,
-                        extensions: [
-                            [$class: 'CleanBeforeCheckout'],
-                            [$class: 'CloneOption', depth: 1, shallow: true]
-                        ],
-                        submoduleCfg: [],
-                        userRemoteConfigs: scm.userRemoteConfigs
-                    ])
+                container('jenkins-agent') {
+                    script {
+                        def branch = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
+                        branch = branch.replaceAll('/', '-')
+                        def shortCommit = sh(script: "git rev-parse --short=7 HEAD", returnStdout: true).trim()
 
-                    if (params.COMMIT_ID && params.COMMIT_ID.trim() != '') {
-                        env.COMMIT_ID = params.COMMIT_ID.trim()
-                    } else {
-                        env.COMMIT_ID = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                        env.IMAGE_TAG = "${branch}-${shortCommit}"
+                        env.LATEST_TAG = "latest"
+
+                        echo "Tags for this build: ${IMAGE_TAG}, ${LATEST_TAG}"
                     }
-
-                    env.IMAGE_TAG      = "${TARGET_BRANCH}-${env.COMMIT_ID}"
-                    env.FULL_IMAGE_URI = "${ECR_REGISTRY}/${ECR_REPOSITORY_NAME}:${env.IMAGE_TAG}"
-
-                    echo "📝 Commit: ${env.COMMIT_ID}"
-                    echo "🏷️  Tag:    ${env.IMAGE_TAG}"
                 }
             }
         }
 
-        stage('Validate') {
+        stage('SonarQube Scan') {
+            when { expression { return env.RUN_SONAR == "true" } }
             steps {
-                sh '''
-                    [ -f Dockerfile ]  || (echo "❌ Dockerfile not found" && exit 1)
-                    [ -f Makefile ]    || (echo "❌ Makefile not found" && exit 1)
-                    [ -f go.mod ]      || (echo "❌ go.mod not found" && exit 1)
-                    [ -f cmd/main.go ] || (echo "❌ cmd/main.go not found" && exit 1)
-                    echo "✅ All required files found"
-                '''
-            }
-        }
-
-        stage('Build Docker Image') {
-            when {
-                not { equals expected: 'rollback', actual: params.DEPLOYMENT_MODE }
-            }
-            steps {
-                sh '''
-                    make docker-build
-
-                    docker tag ${APP_NAME}:latest ${APP_NAME}:${IMAGE_TAG}
-                    docker tag ${APP_NAME}:${IMAGE_TAG} ${ECR_REGISTRY}/${ECR_REPOSITORY_NAME}:${IMAGE_TAG}
-
-                    docker images | grep ${APP_NAME} | head -3
-                    echo "✅ Image built: ${IMAGE_TAG}"
-                '''
-            }
-        }
-
-        stage('Login to ECR') {
-            when {
-                not { equals expected: 'rollback', actual: params.DEPLOYMENT_MODE }
-            }
-            steps {
-                sh '''
-                    make ecr-login
-                    echo "✅ ECR login successful"
-                '''
-            }
-        }
-
-        stage('Push to ECR') {
-            when {
-                not { equals expected: 'rollback', actual: params.DEPLOYMENT_MODE }
-            }
-            steps {
-                sh '''
-                    make ecr-push ENVIRONMENT=${TARGET_ENVIRONMENT} IMAGE_TAG=${IMAGE_TAG}
-
-                    aws ecr describe-images \
-                        --repository-name ${ECR_REPOSITORY_NAME} \
-                        --image-ids imageTag=${IMAGE_TAG} \
-                        --region ${AWS_DEFAULT_REGION}
-                    echo "✅ Image pushed to ECR"
-                '''
-            }
-        }
-
-        stage('Set kubectl Context') {
-            steps {
-                sh '''
-                    make eks-context ENVIRONMENT=${TARGET_ENVIRONMENT}
-                    kubectl get nodes
-                    echo "✅ kubectl context set"
-                '''
-            }
-        }
-
-        stage('Rollback') {
-            when {
-                equals expected: 'rollback', actual: params.DEPLOYMENT_MODE
-            }
-            steps {
-                sh '''
-                    make eks-rollback ENVIRONMENT=${TARGET_ENVIRONMENT}
-                    echo "✅ Rollback initiated"
-                '''
-            }
-        }
-
-        stage('Deploy to EKS') {
-            when {
-                not { equals expected: 'rollback', actual: params.DEPLOYMENT_MODE }
-            }
-            steps {
-                sh '''
-                    make eks-deploy ENVIRONMENT=${TARGET_ENVIRONMENT} IMAGE_TAG=${IMAGE_TAG}
-                    echo "✅ Deployment initiated"
-                '''
-            }
-        }
-
-        stage('Health Check') {
-            steps {
-                script {
-                    timeout(time: 10, unit: 'MINUTES') {
+                container('jenkins-agent') {
+                    withSonarQubeEnv("${SONARQUBE_ENV}") {
                         sh '''
-                            make eks-wait ENVIRONMENT=${TARGET_ENVIRONMENT}
-                            echo "✅ Rollout complete"
+                            mvn clean verify sonar:sonar \
+                            -Dsonar.projectKey=${APP_NAME} \
+                            -Dsonar.projectName=${APP_NAME} \
+                            -Dsonar.projectVersion=${IMAGE_TAG}
                         '''
                     }
-                    sh 'make eks-status ENVIRONMENT=${TARGET_ENVIRONMENT}'
                 }
             }
         }
 
-        stage('Cleanup Old ECR Images') {
-            when {
-                not { equals expected: 'rollback', actual: params.DEPLOYMENT_MODE }
-            }
+        stage('Check Tools') {
             steps {
-                sh '''
-                    make ecr-cleanup ENVIRONMENT=${TARGET_ENVIRONMENT} MAX_RELEASES=${MAX_RELEASES_TO_KEEP}
-                    echo "✅ Cleanup complete"
-                '''
+                script {
+                    parallel(
+                        "Check AWS CLI": {
+                            container('aws-cli') {
+                                sh '''
+                                    echo "Checking AWS CLI..."
+                                    aws --version
+                                    aws sts get-caller-identity
+                                    echo "AWS CLI OK"
+                                '''
+                            }
+                        },
+                        "Check Kaniko": {
+                            container('kaniko') {
+                                sh '''
+                                    echo "Checking Kaniko..."
+                                    ls -la /kaniko
+                                    echo "Kaniko OK"
+                                '''
+                            }
+                        },
+                        "Check Helm & Kubectl": {
+                            container('helm-deploy') {
+                                sh '''
+                                    echo "Checking Helm..."
+                                    helm version
+                                    echo "Checking Kubectl..."
+                                    kubectl version --client=true
+                                '''
+                            }
+                        }
+                    )
+                }
+            }
+        }
+
+        stage('Prepare ECR Authentication') {
+            steps {
+                container('aws-cli') {
+                    sh '''
+                        echo "Setting up ECR authentication for Kaniko..."
+                        mkdir -p /home/jenkins/agent/.docker
+                        REG="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+                        PW=$(aws ecr get-login-password --region ${AWS_REGION})
+                        AUTH=$(printf "AWS:%s" "$PW" | base64 -w0)
+                        cat > /home/jenkins/agent/.docker/config.json <<EOF
+{"auths":{"$REG":{"auth":"$AUTH"}}}
+EOF
+                        echo "ECR authentication configured successfully"
+                    '''
+                }
+            }
+        }
+
+
+        stage('Build & Push Image with Kaniko') {
+            steps {
+                container('kaniko') {
+                    withCredentials([string(credentialsId: 'GitHub-Token', variable: 'GITHUB_TOKEN')]) {
+                        sh '''
+                            REG="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+                            echo "Pushing to $REG with tags ${IMAGE_TAG} and ${LATEST_TAG}"
+
+                            /kaniko/executor \
+                                --context ${WORKSPACE} \
+                                --dockerfile ${WORKSPACE}/Dockerfile \
+                                --destination ${REG}/${ECR_REPO}:${IMAGE_TAG} \
+                                --destination ${REG}/${ECR_REPO}:${LATEST_TAG} \
+                                --build-arg GITHUB_TOKEN=${GITHUB_TOKEN} \
+                                --cache=true \
+                                --verbosity=info
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Setup Kubernetes Access') {
+            steps {
+                container('aws-cli') {
+                    sh '''
+                        echo "Setting up Kubernetes access..."
+                        aws --version
+                        aws sts get-caller-identity
+                        aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy with Helm') {
+            steps {
+                container('helm-deploy') {
+                    sh '''
+                        REG="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+                        echo "Deploying application using Helm..."
+                        helm upgrade --install ${APP_RELEASE} ./helm \
+                            --namespace ${NAMESPACE} --create-namespace \
+                            --set image.repository=${REG}/${ECR_REPO} \
+                            --set image.tag=${IMAGE_TAG} \
+                            --set app.name=${APP_NAME} \
+                            -f helm/values.yaml
+
+                        echo "Waiting for rollout..."
+                        kubectl rollout status deployment/${APP_RELEASE} -n ${NAMESPACE} --timeout=300s
+                        kubectl get pods -l app=${APP_RELEASE} -n ${NAMESPACE}
+                    '''
+                }
             }
         }
     }
@@ -238,30 +260,26 @@ pipeline {
     post {
         always {
             sh '''
-                docker rmi ${APP_NAME}:${IMAGE_TAG} 2>/dev/null || true
-                docker rmi ${ECR_REGISTRY}/${ECR_REPOSITORY_NAME}:${IMAGE_TAG} 2>/dev/null || true
-                docker images --filter "reference=${APP_NAME}" --filter "dangling=true" -q \
-                    | xargs -r docker rmi 2>/dev/null || true
+                echo "Deployment process completed."
             '''
         }
-
         success {
-            script {
-                def type = (DEPLOYMENT_MODE == 'rollback') ? 'ROLLBACK' : 'DEPLOYMENT'
-                echo "🎉 DATA HUB ${type} SUCCESSFUL!"
-                echo "✅ Branch: ${TARGET_BRANCH} | Commit: ${COMMIT_ID} | Cluster: ${EKS_CLUSTER_NAME}/${K8S_NAMESPACE}"
-            }
+            echo """
+✅ Pipeline succeeded!
+Image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${IMAGE_TAG}
+App:   ${APP_RELEASE}
+Namespace: ${NAMESPACE}
+            """
         }
-
         failure {
-            script {
-                def type = (DEPLOYMENT_MODE == 'rollback') ? 'ROLLBACK' : 'DEPLOYMENT'
-                echo "❌ DATA HUB ${type} FAILED! Build: ${env.BUILD_URL}"
-            }
-        }
-
-        aborted {
-            echo "⏹️ Deployment aborted — Branch: ${TARGET_BRANCH}, Triggered by: ${TRIGGERED_BY}"
+            echo """
+❌ Pipeline failed!
+Check:
+1. EKS_CLUSTER_NAME is correct
+2. IAM role has ECR + EKS access
+3. Cluster connectivity
+4. Helm chart path exists (./helm-chart)
+            """
         }
     }
 }
