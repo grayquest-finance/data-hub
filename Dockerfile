@@ -9,9 +9,8 @@ RUN apk update && apk add --no-cache git ca-certificates
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source code and generate gqlgen bindings
+# Copy source code
 COPY . .
-RUN go run github.com/99designs/gqlgen generate
 
 # Build binary
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o api_main ./cmd/main.go
