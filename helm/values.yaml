@@ -69,19 +69,19 @@ service:
   annotations: {}
   labels: {}
 
-############################# ingress #############################
+# ─── Ingress (AWS ALB) ────────────────────────────────────────
 ingress:
   enabled: true
   className: alb
   annotations:
-    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/scheme: internal
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/group.name: prod-ingress-group
+    alb.ingress.kubernetes.io/group.name: internal-non-prod-ingress-group
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
     alb.ingress.kubernetes.io/ssl-redirect: '443'
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-south-1:579897422692:certificate/REPLACE_WITH_CERT_ARN
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-south-1:579897422692:certificate/928415ff-0712-4116-9f77-fe03b82f3b21"
   hosts:
-    - host: data-hub.grayquest.com
+    - host: svc-datahub.non-prod.graydev.in
       paths:
         - path: /
           pathType: Prefix
