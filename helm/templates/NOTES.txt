@@ -1,0 +1,13 @@
+Thank you for installing {{ include "data-hub.name" . }}!
+
+To verify the deployment:
+  kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/name={{ include "data-hub.name" . }}
+
+Port-forward (if no ingress):
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "data-hub.fullname" . }} 8080:{{ .Values.service.port }}
+
+Security highlights:
+- PSS restricted via optional Namespace labels
+- Probes (liveness/readiness{{ if .Values.probes.startup.enabled }}, startup{{ end }}), resource requests/limits
+- Token automount disabled
+- External secrets from AWS Secrets Manager

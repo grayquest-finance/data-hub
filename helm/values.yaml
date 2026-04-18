@@ -1,0 +1,120 @@
+############################# namespace #############################
+namespace:
+  name: gq-app
+  create: false
+
+############################# deployment #############################
+replicaCount: 1
+nameOverride: ""
+fullnameOverride: "data-hub"
+image:
+  repository: ""
+  tag: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+resources:
+  requests:
+    cpu: "250m"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+serviceAccount:
+  create: false
+  name: ""
+  annotations: {}
+rbac:
+  create: false
+  rules: []
+podAnnotations:
+  security.kubernetes.io/seccompProfile: "runtime/default"
+podLabels: {}
+containerPort: 8080
+probes:
+  path: /health
+  liveness:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+    successThreshold: 1
+  readiness:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+    successThreshold: 1
+  startup:
+    enabled: false
+    initialDelaySeconds: 0
+    periodSeconds: 5
+    failureThreshold: 30
+    timeoutSeconds: 2
+nodeSelector: {}
+tolerations: []
+extraVolumes:
+  - name: tmp
+    emptyDir: {}
+extraVolumeMounts:
+  - name: tmp
+    mountPath: /tmp
+
+############################# service #############################
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  annotations: {}
+  labels: {}
+
+############################# ingress #############################
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/group.name: prod-ingress-group
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-south-1:579897422692:certificate/REPLACE_WITH_CERT_ARN
+  hosts:
+    - host: data-hub.grayquest.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+############################# configmap #############################
+configmap:
+  enabled: false
+
+############################# secret #############################
+secret:
+  enabled: false
+
+############################# External Secrets Configuration  #############################
+externalSecrets:
+  enabled: true
+  refreshInterval: "1m"
+  secretStoreName: "aws-secretsmanager"
+  secretStoreKind: "ClusterSecretStore"
+  awsSecretName: "data-hub-secret"
+
+############################# hpa #############################
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 70
+
+############################# pdb #############################
+pdb:
+  enabled: false
+  minAvailable: 1
+
+############################# env #############################
+env: []
+envFromSecrets: []
