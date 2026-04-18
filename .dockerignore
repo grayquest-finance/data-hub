@@ -1,0 +1,11 @@
+.git
+.env
+*.md
+Makefile
+Jenkinsfile
+docker-compose.yml
+.dockerignore
+.idea
+.vscode
+logs/
+data-hub
