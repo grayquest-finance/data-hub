@@ -98,7 +98,7 @@ spec:
             steps {
                 container('jenkins-agent') {
                     git branch: "${params.GIT_BRANCH}",
-                        url: 'https://github.com/shravan-amberkar-gq/data-hub.git',
+                        url: 'https://github.com/grayquest-finance/data-hub.git',
                         credentialsId: 'test-cred-git'
 
                     sh '''

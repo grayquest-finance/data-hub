@@ -86,7 +86,7 @@ Copy `.env.example` to `.env`. Current `.env.example` variables:
 | Variable | Required | Notes |
 |---|---|---|
 | `PORT` | no | Defaults to `8080` |
-| `X_API_KEY` | yes | Incoming `X-Api-Key` header value (maps to `GATEWAY_API_KEY` in the target arch) |
+| `X_API_KEY` | yes | Validated against incoming `X-Api-Key` header |
 
 As the service is built out, these will be added:
 
