@@ -81,7 +81,7 @@ ingress:
     alb.ingress.kubernetes.io/ssl-redirect: '443'
     alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-south-1:579897422692:certificate/928415ff-0712-4116-9f77-fe03b82f3b21"
   hosts:
-    - host: svc-datahub.non-prod.graydev.in
+    - host: data-hub.non-prod.graydev.in
       paths:
         - path: /
           pathType: Prefix

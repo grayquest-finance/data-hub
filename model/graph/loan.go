@@ -23,7 +23,7 @@ type TranchDetails struct {
 	StartDate            *string
 	EndDate              *string
 	AdvanceEmiCount      *string
-	DefaultAmount        *string
+	TranchAmount         *string
 	InterestRate         *string
 	Subvention           *string
 	SubventionFlag       *bool

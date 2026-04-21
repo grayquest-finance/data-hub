@@ -45,6 +45,12 @@ func (r *loanDataResolver) Disbursements(ctx context.Context, obj *model.LoanDat
 		return nil, nil
 	}
 
+	r.Logger.Info("disbursement parsed",
+		zap.String("app_id", obj.ApplicationID),
+		zap.Bool("success", apiResp.Success),
+		zap.Int("count", len(apiResp.Data)),
+	)
+
 	if len(apiResp.Data) == 0 {
 		return nil, nil
 	}

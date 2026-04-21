@@ -64,7 +64,7 @@ type TranchDetails {
   startDate:            String
   endDate:              String
   advanceEmiCount:      String
-  defaultAmount:        String
+  tranchAmount:         String
   interestRate:         String
   subvention:           String
   subventionFlag:       Boolean

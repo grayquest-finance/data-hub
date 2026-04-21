@@ -95,7 +95,6 @@ type ComplexityRoot struct {
 
 	TranchDetails struct {
 		AdvanceEmiCount      func(childComplexity int) int
-		DefaultAmount        func(childComplexity int) int
 		EmiCount             func(childComplexity int) int
 		EndDate              func(childComplexity int) int
 		InterestRate         func(childComplexity int) int
@@ -104,6 +103,7 @@ type ComplexityRoot struct {
 		Subvention           func(childComplexity int) int
 		SubventionFlag       func(childComplexity int) int
 		SubventionPercentage func(childComplexity int) int
+		TranchAmount         func(childComplexity int) int
 		TranchLabel          func(childComplexity int) int
 	}
 }
@@ -357,12 +357,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.TranchDetails.AdvanceEmiCount(childComplexity), true
-	case "TranchDetails.defaultAmount":
-		if e.ComplexityRoot.TranchDetails.DefaultAmount == nil {
-			break
-		}
-
-		return e.ComplexityRoot.TranchDetails.DefaultAmount(childComplexity), true
 	case "TranchDetails.emiCount":
 		if e.ComplexityRoot.TranchDetails.EmiCount == nil {
 			break
@@ -411,6 +405,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.TranchDetails.SubventionPercentage(childComplexity), true
+	case "TranchDetails.tranchAmount":
+		if e.ComplexityRoot.TranchDetails.TranchAmount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TranchDetails.TranchAmount(childComplexity), true
 	case "TranchDetails.tranchLabel":
 		if e.ComplexityRoot.TranchDetails.TranchLabel == nil {
 			break
@@ -551,7 +551,7 @@ type TranchDetails {
   startDate:            String
   endDate:              String
   advanceEmiCount:      String
-  defaultAmount:        String
+  tranchAmount:         String
   interestRate:         String
   subvention:           String
   subventionFlag:       Boolean
@@ -877,8 +877,8 @@ func (ec *executionContext) fieldContext_Disbursement_tranchDetails(_ context.Co
 				return ec.fieldContext_TranchDetails_endDate(ctx, field)
 			case "advanceEmiCount":
 				return ec.fieldContext_TranchDetails_advanceEmiCount(ctx, field)
-			case "defaultAmount":
-				return ec.fieldContext_TranchDetails_defaultAmount(ctx, field)
+			case "tranchAmount":
+				return ec.fieldContext_TranchDetails_tranchAmount(ctx, field)
 			case "interestRate":
 				return ec.fieldContext_TranchDetails_interestRate(ctx, field)
 			case "subvention":
@@ -2022,14 +2022,14 @@ func (ec *executionContext) fieldContext_TranchDetails_advanceEmiCount(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _TranchDetails_defaultAmount(ctx context.Context, field graphql.CollectedField, obj *model.TranchDetails) (ret graphql.Marshaler) {
+func (ec *executionContext) _TranchDetails_tranchAmount(ctx context.Context, field graphql.CollectedField, obj *model.TranchDetails) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_TranchDetails_defaultAmount,
+		ec.fieldContext_TranchDetails_tranchAmount,
 		func(ctx context.Context) (any, error) {
-			return obj.DefaultAmount, nil
+			return obj.TranchAmount, nil
 		},
 		nil,
 		ec.marshalOString2ᚖstring,
@@ -2038,7 +2038,7 @@ func (ec *executionContext) _TranchDetails_defaultAmount(ctx context.Context, fi
 	)
 }
 
-func (ec *executionContext) fieldContext_TranchDetails_defaultAmount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_TranchDetails_tranchAmount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TranchDetails",
 		Field:      field,
@@ -4203,8 +4203,8 @@ func (ec *executionContext) _TranchDetails(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._TranchDetails_endDate(ctx, field, obj)
 		case "advanceEmiCount":
 			out.Values[i] = ec._TranchDetails_advanceEmiCount(ctx, field, obj)
-		case "defaultAmount":
-			out.Values[i] = ec._TranchDetails_defaultAmount(ctx, field, obj)
+		case "tranchAmount":
+			out.Values[i] = ec._TranchDetails_tranchAmount(ctx, field, obj)
 		case "interestRate":
 			out.Values[i] = ec._TranchDetails_interestRate(ctx, field, obj)
 		case "subvention":

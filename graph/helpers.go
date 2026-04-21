@@ -129,7 +129,7 @@ func mapTranchDetails(t upstream.TranchDetails) *model.TranchDetails {
 		StartDate:            strPtr(t.StartDate),
 		EndDate:              strPtr(t.EndDate),
 		AdvanceEmiCount:      strPtr(t.AdvanceEmiCount),
-		DefaultAmount:        anyToStrPtr(t.DefaultAmount),
+		TranchAmount:         anyToStrPtr(t.DefaultAmount),
 		InterestRate:         strPtr(t.InterestRate),
 		Subvention:           strPtr(t.Subvention),
 		SubventionFlag:       &flag,
