@@ -36,11 +36,7 @@ coverage.txt
 *.log
 logs/
 
-# Cache
-cache/
-tmp/
-
-# Air live-reload
+# Air live-reload / temp build dirs
 .air.toml
 tmp/
 
