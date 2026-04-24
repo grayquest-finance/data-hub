@@ -1,17 +1,29 @@
-############################# namespace #############################
+```yaml
+# =========================================
+# data-hub Helm Values (PRODUCTION)
+# =========================================
+
+#############################
+# Namespace
+#############################
 namespace:
   name: gq-app
   create: false
 
-############################# deployment #############################
-replicaCount: 1
+#############################
+# Deployment
+#############################
+replicaCount: 2
+
 nameOverride: ""
 fullnameOverride: "data-hub"
+
 image:
-  repository: ""
-  tag: ""
+  repository: 527877698776.dkr.ecr.ap-south-1.amazonaws.com/data-hub
+  tag: "latest"
   pullPolicy: IfNotPresent
   pullSecrets: []
+
 resources:
   requests:
     cpu: "250m"
@@ -19,49 +31,73 @@ resources:
   limits:
     cpu: "500m"
     memory: "512Mi"
+
+#############################
+# Service Account
+#############################
 serviceAccount:
   create: false
-  name: ""
+  name: "gq-app-sa"
   annotations: {}
+
+#############################
+# RBAC
+#############################
 rbac:
   create: false
   rules: []
+
+#############################
+# Pod Configuration
+#############################
 podAnnotations:
   security.kubernetes.io/seccompProfile: "runtime/default"
+
 podLabels: {}
+
 containerPort: 8080
+
 probes:
   path: /health
+
   liveness:
     enabled: true
     initialDelaySeconds: 10
-    periodSeconds: 10
-    timeoutSeconds: 2
+    periodSeconds: 30
+    timeoutSeconds: 5
     failureThreshold: 3
     successThreshold: 1
+
   readiness:
     enabled: true
     initialDelaySeconds: 5
-    periodSeconds: 10
-    timeoutSeconds: 2
+    periodSeconds: 15
+    timeoutSeconds: 5
     failureThreshold: 3
     successThreshold: 1
+
   startup:
-    enabled: false
-    initialDelaySeconds: 0
+    enabled: true
+    initialDelaySeconds: 5
     periodSeconds: 5
-    failureThreshold: 30
-    timeoutSeconds: 2
+    failureThreshold: 12
+    timeoutSeconds: 5
+
 nodeSelector: {}
+
 tolerations: []
+
 extraVolumes:
   - name: tmp
     emptyDir: {}
+
 extraVolumeMounts:
   - name: tmp
     mountPath: /tmp
 
-############################# service #############################
+#############################
+# Service
+#############################
 service:
   type: ClusterIP
   port: 8080
@@ -69,52 +105,70 @@ service:
   annotations: {}
   labels: {}
 
-# ─── Ingress (AWS ALB) ────────────────────────────────────────
+#############################
+# Ingress (Production ALB)
+#############################
 ingress:
   enabled: true
   className: alb
+
   annotations:
-    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/group.name: internal-non-prod-ingress-group
+    alb.ingress.kubernetes.io/group.name: prod-ingress-group
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
     alb.ingress.kubernetes.io/ssl-redirect: '443'
-    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-south-1:579897422692:certificate/928415ff-0712-4116-9f77-fe03b82f3b21"
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-south-1:527877698776:certificate/5339f5f9-6517-4c98-93ab-ea51ffa05034
+
   hosts:
-    - host: data-hub.non-prod.graydev.in
+    - host: data-hub-prod.grayquest.com
       paths:
         - path: /
           pathType: Prefix
 
-############################# configmap #############################
+#############################
+# ConfigMap
+#############################
 configmap:
   enabled: false
 
-############################# secret #############################
+#############################
+# Secret
+#############################
 secret:
   enabled: false
 
-############################# External Secrets Configuration  #############################
+#############################
+# External Secrets
+#############################
 externalSecrets:
   enabled: true
   refreshInterval: "1m"
   secretStoreName: "aws-secretsmanager"
   secretStoreKind: "ClusterSecretStore"
-  awsSecretName: "data-hub-secret"
+  awsSecretName: "gq-data-hub-secret"
 
-############################# hpa #############################
+#############################
+# HPA
+#############################
 autoscaling:
   enabled: true
   minReplicas: 2
-  maxReplicas: 10
+  maxReplicas: 5
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 70
 
-############################# pdb #############################
+#############################
+# PDB
+#############################
 pdb:
-  enabled: false
+  enabled: true
   minAvailable: 1
 
-############################# env #############################
+#############################
+# Environment Variables
+#############################
 env: []
+
 envFromSecrets: []
+```
