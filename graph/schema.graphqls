@@ -1,0 +1,72 @@
+type Query {
+  # Returns loan data for an application. Only requested sections are fetched.
+  loanData(applicationId: String!): LoanData
+}
+
+type LoanData {
+  disbursements:      [Disbursement]
+  applicationDetails: ApplicationDetails
+  kyc:                [Kyc]
+  refunds:            [Refund]
+  payments:           [Payment]
+  repaymentAndEmi:    RepaymentAndEmi
+}
+
+type ApplicationDetails {
+  currentStage:              String
+  productName:               String
+  productTags:               [String]
+  currentApplicationTracker: String
+}
+
+type Disbursement {
+  utr:              String
+  disbursalDate:    String
+  disbursementType: String
+  tranchDetails: TranchDetails
+}
+
+type RepaymentAndEmi {
+  totalEmis:            Int
+  emisPaid:             Int
+  nextEmiDate:          String
+  nextEmiAmount:        Float
+  outstandingPrincipal: Float
+  overdueAmount:        Float
+  overdueEmis:          Int
+  dpd:                  Int
+}
+
+type Payment {
+  transactionId:   String
+  amount:          Float
+  transactionDate: String
+  status:          String
+  mode:            String
+}
+
+type Refund {
+  refundAmount: Float
+  status:       String
+  initiatedOn:  String
+  settledOn:    String
+}
+
+type Kyc {
+  kycType:   String
+  kycStatus: String
+}
+
+type TranchDetails {
+  label:                String
+  tranchLabel:          String
+  emiCount:             String
+  startDate:            String
+  endDate:              String
+  advanceEmiCount:      String
+  tranchAmount:         String
+  interestRate:         String
+  subvention:           String
+  subventionFlag:       Boolean
+  subventionPercentage: Float
+}

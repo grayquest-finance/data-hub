@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: data_hub_api
+    image: data-hub:latest
+    env_file:
+      - .env
+    ports:
+      - "${PORT:-8080}:8080"
+    volumes:
+      - ./logs:/var/log/app_logs/data_hub
+    networks:
+      - data_hub_network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  redis:
+    image: redis:7-alpine
+    container_name: data_hub_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - data_hub_network
+    restart: unless-stopped
+    profiles:
+      - cache
+
+networks:
+  data_hub_network:
+    driver: bridge
