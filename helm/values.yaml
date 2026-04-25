@@ -1,18 +1,8 @@
 ```yaml
-# =========================================
-# data-hub Helm Values (PRODUCTION)
-# =========================================
-
-#############################
-# Namespace
-#############################
 namespace:
   name: gq-app
   create: false
 
-#############################
-# Deployment
-#############################
 replicaCount: 2
 
 nameOverride: ""
@@ -32,24 +22,15 @@ resources:
     cpu: "500m"
     memory: "512Mi"
 
-#############################
-# Service Account
-#############################
 serviceAccount:
   create: false
   name: "gq-app-sa"
   annotations: {}
 
-#############################
-# RBAC
-#############################
 rbac:
   create: false
   rules: []
 
-#############################
-# Pod Configuration
-#############################
 podAnnotations:
   security.kubernetes.io/seccompProfile: "runtime/default"
 
@@ -95,9 +76,6 @@ extraVolumeMounts:
   - name: tmp
     mountPath: /tmp
 
-#############################
-# Service
-#############################
 service:
   type: ClusterIP
   port: 8080
@@ -105,9 +83,6 @@ service:
   annotations: {}
   labels: {}
 
-#############################
-# Ingress (Production ALB)
-#############################
 ingress:
   enabled: true
   className: alb
@@ -116,9 +91,9 @@ ingress:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/group.name: prod-ingress-group
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
-    alb.ingress.kubernetes.io/ssl-redirect: '443'
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-south-1:527877698776:certificate/5339f5f9-6517-4c98-93ab-ea51ffa05034
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-south-1:527877698776:certificate/5339f5f9-6517-4c98-93ab-ea51ffa05034"
 
   hosts:
     - host: data-hub-prod.grayquest.com
@@ -126,21 +101,12 @@ ingress:
         - path: /
           pathType: Prefix
 
-#############################
-# ConfigMap
-#############################
 configmap:
   enabled: false
 
-#############################
-# Secret
-#############################
 secret:
   enabled: false
 
-#############################
-# External Secrets
-#############################
 externalSecrets:
   enabled: true
   refreshInterval: "1m"
@@ -148,9 +114,6 @@ externalSecrets:
   secretStoreKind: "ClusterSecretStore"
   awsSecretName: "gq-data-hub-secret"
 
-#############################
-# HPA
-#############################
 autoscaling:
   enabled: true
   minReplicas: 2
@@ -158,16 +121,10 @@ autoscaling:
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 70
 
-#############################
-# PDB
-#############################
 pdb:
-  enabled: true
+  enabled: false
   minAvailable: 1
 
-#############################
-# Environment Variables
-#############################
 env: []
 
 envFromSecrets: []
