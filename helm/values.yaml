@@ -1,4 +1,3 @@
-```yaml
 namespace:
   name: gq-app
   create: false
