@@ -95,7 +95,7 @@ ingress:
     alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-south-1:527877698776:certificate/5339f5f9-6517-4c98-93ab-ea51ffa05034"
 
   hosts:
-    - host: data-hub-prod.grayquest.com
+    - host: data-hub.grayquest.com
       paths:
         - path: /
           pathType: Prefix
