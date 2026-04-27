@@ -50,7 +50,6 @@ func computeRepaymentAndEmi(entries []upstream.RepaymentEntry, today time.Time) 
 	paidSlugs := map[string]bool{"paid": true, "posted": true}
 	todayDate := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC)
 
-	totalEmis := 0
 	emisPaid := 0
 	outstandingPrincipal := 0.0
 	overdueAmount := 0.0
@@ -63,7 +62,6 @@ func computeRepaymentAndEmi(entries []upstream.RepaymentEntry, today time.Time) 
 		if e.Label == "Total" {
 			continue
 		}
-		totalEmis++
 
 		isPaid := e.RepaymentStatus != nil && paidSlugs[e.RepaymentStatus.Slug]
 		if isPaid {
@@ -98,7 +96,6 @@ func computeRepaymentAndEmi(entries []upstream.RepaymentEntry, today time.Time) 
 	}
 
 	return &model.RepaymentAndEmi{
-		TotalEmis:            &totalEmis,
 		EmisPaid:             &emisPaid,
 		NextEmiDate:          nextEmiDate,
 		NextEmiAmount:        nextEmiAmount,

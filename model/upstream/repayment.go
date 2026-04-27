@@ -10,7 +10,13 @@ type RepaymentScheduleAPIResponse struct {
 }
 
 type RepaymentScheduleData struct {
-	RepaymentData RepaymentData `json:"repayment_data"`
+	PaymentSummary PaymentSummary `json:"payment_summary"`
+	RepaymentData  RepaymentData  `json:"repayment_data"`
+}
+
+// PaymentSummary holds upstream-precomputed totals from the repayment service.
+type PaymentSummary struct {
+	TotalAmountPaid float64 `json:"total_amount_paid"`
 }
 
 type RepaymentData struct {

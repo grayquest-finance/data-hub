@@ -321,6 +321,12 @@ func (r *loanDataResolver) RepaymentAndEmi(ctx context.Context, obj *model.LoanD
 	// 3. Compute all fields from combined_data
 	result := computeRepaymentAndEmi(entries, time.Now().UTC())
 
+	// totalAmountPaid comes from upstream's precomputed payment_summary, not combined_data
+	if paid := apiResp.Data.PaymentSummary.TotalAmountPaid; paid > 0 {
+		p := paid
+		result.TotalAmountPaid = &p
+	}
+
 	// 4. Store in cache
 	if bytes, marshalErr := json.Marshal(result); marshalErr == nil {
 		_ = r.Cache.Set(ctx, cacheKey, string(bytes), r.Config.CacheTTL.Repayment)

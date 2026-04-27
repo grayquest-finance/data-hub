@@ -59,10 +59,10 @@ type ApplicationSummaryAPIResponse struct {
 
 // ApplicationSummaryRecord holds the fields we need from the application summary response.
 type ApplicationSummaryRecord struct {
-	CurrentStage              string   `json:"current_stage"`
+	CurrentStage              string   `json:"stage_name"`
 	ProductName               string   `json:"product_name"`
 	ProductTags               []string `json:"product_tags"`
-	CurrentApplicationTracker string   `json:"current_application_tracker"`
+	CurrentApplicationTracker string   `json:"-"` // TODO: wire up once tracker source is decided
 }
 
 // PaymentsAPIResponse is the raw JSON returned by the admin service.
