@@ -318,12 +318,22 @@ func (r *loanDataResolver) RepaymentAndEmi(ctx context.Context, obj *model.LoanD
 		return nil, nil
 	}
 
-	// 3. Compute all fields from combined_data
+	// 3. Compute counters/overdue/dpd from combined_data
 	result := computeRepaymentAndEmi(entries, time.Now().UTC())
 
-	// totalAmountPaid comes from upstream's precomputed payment_summary, not combined_data
-	if paid := apiResp.Data.PaymentSummary.TotalAmountPaid; paid > 0 {
-		p := paid
+	// nextEmiDate, nextEmiAmount, and totalAmountPaid come from upstream's
+	// precomputed payment_summary — same source the customer-facing UI uses.
+	ps := apiResp.Data.PaymentSummary
+	if ps.UpcomingDueDate != "" {
+		d := ps.UpcomingDueDate
+		result.NextEmiDate = &d
+	}
+	if ps.UpcomingEmiAmount > 0 {
+		a := ps.UpcomingEmiAmount
+		result.NextEmiAmount = &a
+	}
+	if ps.TotalAmountPaid > 0 {
+		p := ps.TotalAmountPaid
 		result.TotalAmountPaid = &p
 	}
 
