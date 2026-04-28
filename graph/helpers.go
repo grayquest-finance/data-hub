@@ -43,27 +43,24 @@ func floatPtr(f float64) *float64 {
 	return &f
 }
 
-// computeRepaymentAndEmi derives all 8 repayment summary fields from combined_data.
+// computeRepaymentAndEmi derives the EMI counters and overdue/dpd metrics from combined_data.
+// nextEmiDate / nextEmiAmount / totalAmountPaid are sourced from payment_summary in the resolver.
 // It excludes the "Total" aggregation row and treats "paid"/"posted" slugs as settled.
 // due_date format from upstream is "D-M-YYYY" (e.g. "5-2-2026").
 func computeRepaymentAndEmi(entries []upstream.RepaymentEntry, today time.Time) *model.RepaymentAndEmi {
 	paidSlugs := map[string]bool{"paid": true, "posted": true}
 	todayDate := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC)
 
-	totalEmis := 0
 	emisPaid := 0
 	outstandingPrincipal := 0.0
 	overdueAmount := 0.0
 	overdueEmis := 0
 	maxDpd := 0
-	var nextEmiDate *string
-	var nextEmiAmount *float64
 
 	for _, e := range entries {
 		if e.Label == "Total" {
 			continue
 		}
-		totalEmis++
 
 		isPaid := e.RepaymentStatus != nil && paidSlugs[e.RepaymentStatus.Slug]
 		if isPaid {
@@ -81,27 +78,17 @@ func computeRepaymentAndEmi(entries []upstream.RepaymentEntry, today time.Time) 
 		dueDateOnly := time.Date(dueDate.Year(), dueDate.Month(), dueDate.Day(), 0, 0, 0, 0, time.UTC)
 
 		if dueDateOnly.Before(todayDate) {
-			// Overdue
 			overdueEmis++
 			overdueAmount += e.TotalEmi
 			days := int(todayDate.Sub(dueDateOnly).Hours() / 24)
 			if days > maxDpd {
 				maxDpd = days
 			}
-		} else if nextEmiDate == nil {
-			// Upcoming — first one in order is next EMI
-			d := e.DueDate
-			amt := e.TotalEmi
-			nextEmiDate = &d
-			nextEmiAmount = &amt
 		}
 	}
 
 	return &model.RepaymentAndEmi{
-		TotalEmis:            &totalEmis,
 		EmisPaid:             &emisPaid,
-		NextEmiDate:          nextEmiDate,
-		NextEmiAmount:        nextEmiAmount,
 		OutstandingPrincipal: &outstandingPrincipal,
 		OverdueAmount:        &overdueAmount,
 		OverdueEmis:          &overdueEmis,

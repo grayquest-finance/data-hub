@@ -38,6 +38,7 @@ type Config struct {
 		Endpoints struct {
 			Disbursement       string
 			ApplicationSummary string // template: fmt.Sprintf(path, appID)
+			Tracker            string // template: fmt.Sprintf(path, appID)
 			Refunds            string
 			Payments           string
 		}
@@ -135,7 +136,8 @@ func Load() (*Config, error) {
 	}
 	// Endpoint paths hardcoded here so they're all in one place
 	cfg.Admin.Endpoints.Disbursement = "/v0.1/disbursal-requests/fetch"
-	cfg.Admin.Endpoints.ApplicationSummary = "/v0.1/applications/summary/%s/fetch"
+	cfg.Admin.Endpoints.ApplicationSummary = "/v2/applications/summary/%s/fetch"
+	cfg.Admin.Endpoints.Tracker = "/v0.1/trackers/customer/%s/fetch"
 	cfg.Admin.Endpoints.Refunds = "/v1/refunds/requests/fetch"
 	cfg.Admin.Endpoints.Payments = "/v1/payments/transactions/fetch"
 

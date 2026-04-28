@@ -27,7 +27,6 @@ type Disbursement {
 }
 
 type RepaymentAndEmi {
-  totalEmis:            Int
   emisPaid:             Int
   nextEmiDate:          String
   nextEmiAmount:        Float
@@ -35,6 +34,7 @@ type RepaymentAndEmi {
   overdueAmount:        Float
   overdueEmis:          Int
   dpd:                  Int
+  totalAmountPaid:      Float
 }
 
 type Payment {
