@@ -100,7 +100,7 @@ externalSecrets:
   refreshInterval: "1m"
   secretStoreName: "aws-secretsmanager"
   secretStoreKind: "ClusterSecretStore"
-  awsSecretName: "data-hub-secret"
+  awsSecretName: "gq-data-hub-secret"
 
 ############################# hpa #############################
 autoscaling:

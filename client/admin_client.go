@@ -68,3 +68,14 @@ func (c *AdminClient) FetchApplicationSummary(ctx context.Context, appID string)
 	return &result, err
 }
 
+// FetchTracker fetches the customer tracker timeline for an application.
+// GET /v0.1/trackers/customer/{appID}/fetch?page=1
+// Only the first page is needed — results are sorted descending by created_on,
+// so results[0] is the latest tracker event.
+func (c *AdminClient) FetchTracker(ctx context.Context, appID string) (*upstream.TrackerAPIResponse, error) {
+	var result upstream.TrackerAPIResponse
+	endpoint := fmt.Sprintf(c.cfg.Admin.Endpoints.Tracker, appID)
+	err := c.http.Get(ctx, appID, endpoint, map[string]string{"page": "1"}, &result)
+	return &result, err
+}
+

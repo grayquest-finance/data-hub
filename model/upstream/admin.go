@@ -59,10 +59,28 @@ type ApplicationSummaryAPIResponse struct {
 
 // ApplicationSummaryRecord holds the fields we need from the application summary response.
 type ApplicationSummaryRecord struct {
-	CurrentStage              string   `json:"current_stage"`
-	ProductName               string   `json:"product_name"`
-	ProductTags               []string `json:"product_tags"`
-	CurrentApplicationTracker string   `json:"current_application_tracker"`
+	CurrentStage string   `json:"stage_name"`
+	ProductName  string   `json:"product_name"`
+	ProductTags  []string `json:"product_tags"`
+}
+
+// TrackerAPIResponse is the raw JSON returned by the admin trackers endpoint.
+// GET /v0.1/trackers/customer/{appID}/fetch?page=1
+// Results are sorted descending by created_on, so results[0].slug is the current tracker.
+type TrackerAPIResponse struct {
+	Success    bool        `json:"success"`
+	StatusCode int         `json:"status_code"`
+	Message    string      `json:"message"`
+	Data       TrackerData `json:"data"`
+}
+
+type TrackerData struct {
+	Results []TrackerRecord `json:"results"`
+}
+
+type TrackerRecord struct {
+	Slug      string `json:"slug"`
+	CreatedOn string `json:"created_on"`
 }
 
 // PaymentsAPIResponse is the raw JSON returned by the admin service.
