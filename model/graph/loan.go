@@ -41,7 +41,6 @@ type ApplicationDetails struct {
 
 // RepaymentAndEmi holds computed repayment summary fields derived from the repayment schedule.
 type RepaymentAndEmi struct {
-	TotalEmis            *int
 	EmisPaid             *int
 	NextEmiDate          *string
 	NextEmiAmount        *float64
@@ -49,6 +48,7 @@ type RepaymentAndEmi struct {
 	OverdueAmount        *float64
 	OverdueEmis          *int
 	Dpd                  *int
+	TotalAmountPaid      *float64
 }
 
 // Payment is one item in the payments list returned to the consumer.

@@ -90,7 +90,7 @@ type ComplexityRoot struct {
 		OutstandingPrincipal func(childComplexity int) int
 		OverdueAmount        func(childComplexity int) int
 		OverdueEmis          func(childComplexity int) int
-		TotalEmis            func(childComplexity int) int
+		TotalAmountPaid      func(childComplexity int) int
 	}
 
 	TranchDetails struct {
@@ -344,12 +344,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RepaymentAndEmi.OverdueEmis(childComplexity), true
-	case "RepaymentAndEmi.totalEmis":
-		if e.ComplexityRoot.RepaymentAndEmi.TotalEmis == nil {
+	case "RepaymentAndEmi.totalAmountPaid":
+		if e.ComplexityRoot.RepaymentAndEmi.TotalAmountPaid == nil {
 			break
 		}
 
-		return e.ComplexityRoot.RepaymentAndEmi.TotalEmis(childComplexity), true
+		return e.ComplexityRoot.RepaymentAndEmi.TotalAmountPaid(childComplexity), true
 
 	case "TranchDetails.advanceEmiCount":
 		if e.ComplexityRoot.TranchDetails.AdvanceEmiCount == nil {
@@ -514,7 +514,6 @@ type Disbursement {
 }
 
 type RepaymentAndEmi {
-  totalEmis:            Int
   emisPaid:             Int
   nextEmiDate:          String
   nextEmiAmount:        Float
@@ -522,6 +521,7 @@ type RepaymentAndEmi {
   overdueAmount:        Float
   overdueEmis:          Int
   dpd:                  Int
+  totalAmountPaid:      Float
 }
 
 type Payment {
@@ -1169,8 +1169,6 @@ func (ec *executionContext) fieldContext_LoanData_repaymentAndEmi(_ context.Cont
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "totalEmis":
-				return ec.fieldContext_RepaymentAndEmi_totalEmis(ctx, field)
 			case "emisPaid":
 				return ec.fieldContext_RepaymentAndEmi_emisPaid(ctx, field)
 			case "nextEmiDate":
@@ -1185,6 +1183,8 @@ func (ec *executionContext) fieldContext_LoanData_repaymentAndEmi(_ context.Cont
 				return ec.fieldContext_RepaymentAndEmi_overdueEmis(ctx, field)
 			case "dpd":
 				return ec.fieldContext_RepaymentAndEmi_dpd(ctx, field)
+			case "totalAmountPaid":
+				return ec.fieldContext_RepaymentAndEmi_totalAmountPaid(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RepaymentAndEmi", field.Name)
 		},
@@ -1616,35 +1616,6 @@ func (ec *executionContext) fieldContext_Refund_settledOn(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _RepaymentAndEmi_totalEmis(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentAndEmi) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RepaymentAndEmi_totalEmis,
-		func(ctx context.Context) (any, error) {
-			return obj.TotalEmis, nil
-		},
-		nil,
-		ec.marshalOInt2ᚖint,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_RepaymentAndEmi_totalEmis(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RepaymentAndEmi",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _RepaymentAndEmi_emisPaid(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentAndEmi) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1843,6 +1814,35 @@ func (ec *executionContext) fieldContext_RepaymentAndEmi_dpd(_ context.Context, 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RepaymentAndEmi_totalAmountPaid(ctx context.Context, field graphql.CollectedField, obj *model.RepaymentAndEmi) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RepaymentAndEmi_totalAmountPaid,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalAmountPaid, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RepaymentAndEmi_totalAmountPaid(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RepaymentAndEmi",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -4141,8 +4141,6 @@ func (ec *executionContext) _RepaymentAndEmi(ctx context.Context, sel ast.Select
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("RepaymentAndEmi")
-		case "totalEmis":
-			out.Values[i] = ec._RepaymentAndEmi_totalEmis(ctx, field, obj)
 		case "emisPaid":
 			out.Values[i] = ec._RepaymentAndEmi_emisPaid(ctx, field, obj)
 		case "nextEmiDate":
@@ -4157,6 +4155,8 @@ func (ec *executionContext) _RepaymentAndEmi(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._RepaymentAndEmi_overdueEmis(ctx, field, obj)
 		case "dpd":
 			out.Values[i] = ec._RepaymentAndEmi_dpd(ctx, field, obj)
+		case "totalAmountPaid":
+			out.Values[i] = ec._RepaymentAndEmi_totalAmountPaid(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

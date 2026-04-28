@@ -10,7 +10,16 @@ type RepaymentScheduleAPIResponse struct {
 }
 
 type RepaymentScheduleData struct {
-	RepaymentData RepaymentData `json:"repayment_data"`
+	PaymentSummary PaymentSummary `json:"payment_summary"`
+	RepaymentData  RepaymentData  `json:"repayment_data"`
+}
+
+// PaymentSummary holds upstream-precomputed totals from the repayment service.
+// upcoming_due_date format is "DD-MM-YYYY" (zero-padded), unlike combined_data's "D-M-YYYY".
+type PaymentSummary struct {
+	TotalAmountPaid   float64 `json:"total_amount_paid"`
+	UpcomingDueDate   string  `json:"upcoming_due_date"`
+	UpcomingEmiAmount float64 `json:"upcoming_emi_amount"`
 }
 
 type RepaymentData struct {

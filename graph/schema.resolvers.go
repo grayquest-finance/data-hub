@@ -92,28 +92,41 @@ func (r *loanDataResolver) ApplicationDetails(ctx context.Context, obj *model.Lo
 	}
 	r.Logger.Debug("cache miss", zap.String("key", cacheKey))
 
-	// 2. Call admin API
-	apiResp, err := r.AdminClient.FetchApplicationSummary(ctx, obj.ApplicationID)
-	if err != nil {
-		r.Logger.Warn("application summary fetch failed, returning nil",
+	// 2. Call summary and tracker independently — failure of one must not blank the other.
+	item := &model.ApplicationDetails{}
+	gotAny := false
+
+	if apiResp, sErr := r.AdminClient.FetchApplicationSummary(ctx, obj.ApplicationID); sErr != nil {
+		r.Logger.Warn("application summary fetch failed, leaving stage/product/tags null",
 			zap.String("app_id", obj.ApplicationID),
-			zap.Error(err),
+			zap.Error(sErr),
 		)
-		return nil, nil
+	} else {
+		rec := apiResp.Data
+		tags := make([]*string, 0, len(rec.ProductTags))
+		for _, t := range rec.ProductTags {
+			v := t
+			tags = append(tags, &v)
+		}
+		item.CurrentStage = strPtr(rec.CurrentStage)
+		item.ProductName = strPtr(rec.ProductName)
+		item.ProductTags = tags
+		gotAny = true
 	}
 
-	// 3. Map upstream record → GraphQL model
-	rec := apiResp.Data
-	tags := make([]*string, 0, len(rec.ProductTags))
-	for _, t := range rec.ProductTags {
-		v := t
-		tags = append(tags, &v)
+	if trackerResp, tErr := r.AdminClient.FetchTracker(ctx, obj.ApplicationID); tErr != nil {
+		r.Logger.Warn("tracker fetch failed, leaving currentApplicationTracker null",
+			zap.String("app_id", obj.ApplicationID),
+			zap.Error(tErr),
+		)
+	} else if len(trackerResp.Data.Results) > 0 {
+		item.CurrentApplicationTracker = strPtr(trackerResp.Data.Results[0].Slug)
+		gotAny = true
 	}
-	item := &model.ApplicationDetails{
-		CurrentStage:              strPtr(rec.CurrentStage),
-		ProductName:               strPtr(rec.ProductName),
-		ProductTags:               tags,
-		CurrentApplicationTracker: strPtr(rec.CurrentApplicationTracker),
+
+	// If both upstreams returned nothing useful, treat as no data.
+	if !gotAny {
+		return nil, nil
 	}
 
 	// 4. Store in cache
@@ -318,8 +331,24 @@ func (r *loanDataResolver) RepaymentAndEmi(ctx context.Context, obj *model.LoanD
 		return nil, nil
 	}
 
-	// 3. Compute all fields from combined_data
+	// 3. Compute counters/overdue/dpd from combined_data
 	result := computeRepaymentAndEmi(entries, time.Now().UTC())
+
+	// nextEmiDate, nextEmiAmount, and totalAmountPaid come from upstream's
+	// precomputed payment_summary — same source the customer-facing UI uses.
+	ps := apiResp.Data.PaymentSummary
+	if ps.UpcomingDueDate != "" {
+		d := ps.UpcomingDueDate
+		result.NextEmiDate = &d
+	}
+	if ps.UpcomingEmiAmount > 0 {
+		a := ps.UpcomingEmiAmount
+		result.NextEmiAmount = &a
+	}
+	if ps.TotalAmountPaid > 0 {
+		p := ps.TotalAmountPaid
+		result.TotalAmountPaid = &p
+	}
 
 	// 4. Store in cache
 	if bytes, marshalErr := json.Marshal(result); marshalErr == nil {
